@@ -1,0 +1,6 @@
+crawl4ai
+qdrant-client[fastembed]
+llama-index-vector-stores-qdrant 
+llama-index-readers-file 
+llama-index-embeddings-fastembed 
+llama-index-llms-openai
