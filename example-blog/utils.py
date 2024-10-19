@@ -6,7 +6,6 @@ from bs4 import BeautifulSoup
 import requests
 
 from crawl4ai import AsyncWebCrawler
-from crawl4ai.extraction_strategy import LLMExtractionStrategy
 from config import MILELION_SITEMAP_URL, OPENAI_API_KEY
 
 assert OPENAI_API_KEY, "Please set the OPENAI_API_KEY environment variable"
@@ -45,31 +44,12 @@ def get_milelion_urls():
     urls = get_urls_from_sitemap(MILELION_SITEMAP_URL)
     return urls
 
-async def extract_milelion(urls: list[str]):
-    extraction_strategy = LLMExtractionStrategy(
-        provider="openai/gpt-4o",
-        api_token=os.getenv('OPENAI_API_KEY'),
-        instruction=(
-            "From the crawled content, extract the following details: "
-            "1. Title of the article "
-            "2. Summary of the article, which is a detailed summary "
-            "3. Brief summary of the article, which is a paragraph text "
-            "4. Keywords related to the article, which is a list of keywords. "
-            "Exclude any advertisement or noisy content. "
-            'The extracted JSON format should look like this: '
-            '{ "title": "Article Title", "summary": "Detailed summary of the article.", '
-            '"brief_summary": "Brief summary in a paragraph.", "keywords": ["keyword1", "keyword2", "keyword3"] }'
-        ),
-        extraction_type="schema",
-        apply_chunking=False
-    )
-
+async def extract_milelion(urls: list[str], extraction_strategy=None, out_dir=None):
     async with AsyncWebCrawler(verbose=True) as crawler:
         tasks = [crawler.arun(
             url=url,
             word_count_threshold=1,
             extraction_strategy=extraction_strategy,
-            # chunking_strategy=RegexChunking(),
             bypass_cache=True
         ) for url in urls]
         results = await asyncio.gather(*tasks)
@@ -77,8 +57,8 @@ async def extract_milelion(urls: list[str]):
     for i, result in enumerate(results):
         if result.success:
             content = json.loads(result.extracted_content)
-            filename = f"./.data/{result.url.replace('https://milelion.com/', '').replace('/', '_')}.json"
-            os.makedirs("./.data", exist_ok=True)
+            filename = f"{out_dir}/{result.url.replace('https://milelion.com/', '').replace('/', '_')}.json"
+            os.makedirs(out_dir, exist_ok=True)
             with open(filename, "w", encoding="utf-8") as f:
                 json.dump(content, f, indent=2)
 
